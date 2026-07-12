@@ -1,0 +1,19 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "useGulp": false,
+    "plusBeta": false,
+    "isCreatingSolution": true,
+    "nodeVersion": "22.23.0",
+    "sdksVersions": {},
+    "version": "1.23.2",
+    "libraryName": "heft-wp",
+    "libraryId": "86c191a2-12f3-417e-8ae8-27c0830cc8f9",
+    "environment": "spo",
+    "packageManager": "npm",
+    "solutionName": "heft-wp",
+    "solutionShortDescription": "heft-wp description",
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "componentType": "webpart"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "heft-wp-client-side-solution",
+    "id": "86c191a2-12f3-417e-8ae8-27c0830cc8f9",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "developer": {
+      "name": "",
+      "websiteUrl": "",
+      "privacyUrl": "",
+      "termsOfUseUrl": "",
+      "mpnId": "Undefined-1.23.2"
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "heft-wp description"
+      },
+      "longDescription": {
+        "default": "heft-wp description"
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": []
+    },
+    "features": [
+      {
+        "title": "heft-wp Feature",
+        "description": "The feature that activates elements of the heft-wp solution.",
+        "id": "3ad6fc6a-bf2b-4c73-9a96-040dd977bba5",
+        "version": "1.0.0.0"
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/heft-wp.sppkg"
+  }
+}
