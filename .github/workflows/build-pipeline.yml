@@ -1,0 +1,46 @@
+name: SPFx Heft Build Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-solution:
+    name: Checkout and Build SPFx (Heft)
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Clone the repository onto the GitHub runner
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      # Step 2: Establish correct Node version environment
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18' # Adjust this to match your local project's Node version
+          cache: 'npm'
+
+      # Step 3: Perform clean, locked-down installation of dependencies
+      - name: Install Dependencies
+        run: npm ci
+
+      # Step 4: Run Heft build task lifecycle (compiling, linting, tests)
+      - name: Execute Heft Clean and Build
+        run: |
+          npx heft clean
+          npx heft build --production
+
+      # Step 5: Bundle for production package delivery
+      - name: Package Solution
+        run: npx heft package-solution --production
+
+      # Step 6: Securely isolate the compiled .sppkg package as a pipeline artifact
+      - name: Upload Build Package Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: spfx-sppkg-package
+          path: sharepoint/solution/*.sppkg
+          retention-days: 7
