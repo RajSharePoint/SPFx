@@ -20,7 +20,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18' # Adjust this to match your local project's Node version
+          node-version: '22.23.0' # Adjust this to match your local project's Node version
           cache: 'npm'
 
       # Step 3: Perform clean, locked-down installation of dependencies
