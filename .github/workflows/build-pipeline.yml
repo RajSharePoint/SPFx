@@ -1,4 +1,4 @@
-name: SPFx Heft Build Pipeline
+name: SPFx Heft CI-CD Lifecycle
 
 on:
   push:
@@ -10,6 +10,8 @@ jobs:
   build-solution:
     name: Checkout and Build SPFx (Heft)
     runs-on: ubuntu-latest
+    outputs:
+      package-name: ${{ steps.get-package.outputs.name }}
 
     steps:
       # Step 1: Clone the repository onto the GitHub runner
@@ -20,7 +22,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18' # Adjust this to match your local project's Node version
+          node-version: '22.23.0'
           cache: 'npm'
 
       # Step 3: Perform clean, locked-down installation of dependencies
@@ -44,3 +46,53 @@ jobs:
           name: spfx-sppkg-package
           path: sharepoint/solution/*.sppkg
           retention-days: 7
+
+      # Step 7: Identify the package filename dynamically for the deployment job
+      - name: Identify Package Filename
+        id: get-package
+        run: |
+          filename=$(basename $(ls sharepoint/solution/*.sppkg))
+          echo "name=$filename" >> $GITHUB_OUTPUT
+
+  deploy-solution:
+    name: Deploy to SharePoint App Catalog
+    runs-on: ubuntu-latest
+    needs: build-solution
+    # Ensures deployment ONLY triggers on commits/merges directly to the main branch
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      # Step 1: Fetch the compiled package from the build job stage
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: spfx-sppkg-package
+          path: drop/
+
+      # Step 2: Extract the Base64 secret string back into a temporary physical .pfx file
+      - name: Decode Certificate Key
+        run: |
+          echo "${{ secrets.SPFX_PER_BASE64_CERTIFICATE }}" | base64 --decode > github-auth-cert.pfx
+
+      # Step 3: Run the deployment script inside PnP PowerShell
+      - name: Authenticate and Deploy via PnP PowerShell
+        uses: PnP/action-powershell@v2
+        with:
+          pnpversion: 'latest'
+          erroractionpreference: 'stop'
+          script: |
+            # Connect using Entra ID Application ID and Certificate Key mapping
+            $conn = Connect-PnPOnline -Url "${{ vars.SPFX_TARGET_SITE_URL }}" `
+              -ClientId "${{ vars.SPFX_CLIENT_ID }}" `
+              -Tenant "${{ vars.SPFX_TENANT_ID }}" `
+              -CertificatePath "github-auth-cert.pfx" `
+              -CertificatePassword (ConvertTo-SecureString "${{ secrets.SPFX_CERTIFICATE_PASSWORD }}" -AsPlainText -Force) `
+              -ReturnConnection
+
+            Write-Host "Connected successfully to site collection: ${{ vars.SPFX_TARGET_SITE_URL }}"
+
+            # Deploy to the Local Site Collection App Catalog (-Scope Site)
+            Add-PnPApp -Path "drop/${{ needs.build-solution.outputs.package-name }}" -Scope Site -Overwrite
+            Publish-PnPApp -Identity "${{ needs.build-solution.outputs.package-name }}" -Scope Site
+            
+            Write-Host "Deployment completed successfully!"
