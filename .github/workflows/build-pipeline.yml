@@ -87,9 +87,12 @@ jobs:
             -CertificatePassword (ConvertTo-SecureString "${{ secrets.SPFX_CERTIFICATE_PASSWORD }}" -AsPlainText -Force) `
             -ReturnConnection
 
+          if (-not $conn) { throw "Failed to establish a PnP connection." }
+          Set-PnPConnection -Connection $conn
+
           Write-Host "Connected successfully to site collection: ${{ vars.SPFX_TARGET_SITE_URL }}"
 
-          Add-PnPApp -Path "drop/${{ needs.build-solution.outputs.package-name }}" -Scope Site -Overwrite
-          Publish-PnPApp -Identity "${{ needs.build-solution.outputs.package-name }}" -Scope Site
+          Add-PnPApp -Connection $conn -Path "drop/${{ needs.build-solution.outputs.package-name }}" -Scope Site -Overwrite
+          Publish-PnPApp -Connection $conn -Identity "${{ needs.build-solution.outputs.package-name }}" -Scope Site
 
           Write-Host "Deployment completed successfully!"
