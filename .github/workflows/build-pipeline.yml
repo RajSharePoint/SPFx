@@ -69,30 +69,27 @@ jobs:
           name: spfx-sppkg-package
           path: drop/
 
-      # Step 2: Extract the Base64 secret string back into a temporary physical .pfx file
-      - name: Decode Certificate Key
-        run: |
-          echo "${{ secrets.SPFX_PER_BASE64_CERTIFICATE }}" | base64 --decode > github-auth-cert.pfx
-
-      # Step 3: Run the deployment script inside PnP PowerShell
+      # Step 2: Install PnP PowerShell and deploy the package directly from the workflow
       - name: Authenticate and Deploy via PnP PowerShell
-        uses: PnP/action-powershell@v2
-        with:
-          pnpversion: 'latest'
-          erroractionpreference: 'stop'
-          script: |
-            # Connect using Entra ID Application ID and Certificate Key mapping
-            $conn = Connect-PnPOnline -Url "${{ vars.SPFX_TARGET_SITE_URL }}" `
-              -ClientId "${{ vars.SPFX_CLIENT_ID }}" `
-              -Tenant "${{ vars.SPFX_TENANT_ID }}" `
-              -CertificatePath "github-auth-cert.pfx" `
-              -CertificatePassword (ConvertTo-SecureString "${{ secrets.SPFX_CERTIFICATE_PASSWORD }}" -AsPlainText -Force) `
-              -ReturnConnection
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module PnP.PowerShell -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
+          Import-Module PnP.PowerShell
 
-            Write-Host "Connected successfully to site collection: ${{ vars.SPFX_TARGET_SITE_URL }}"
+          $certPath = Join-Path $PWD 'github-auth-cert.pfx'
+          [System.IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String("${{ secrets.SPFX_PER_BASE64_CERTIFICATE }}"))
 
-            # Deploy to the Local Site Collection App Catalog (-Scope Site)
-            Add-PnPApp -Path "drop/${{ needs.build-solution.outputs.package-name }}" -Scope Site -Overwrite
-            Publish-PnPApp -Identity "${{ needs.build-solution.outputs.package-name }}" -Scope Site
-            
-            Write-Host "Deployment completed successfully!"
+          $conn = Connect-PnPOnline -Url "${{ vars.SPFX_TARGET_SITE_URL }}" `
+            -ClientId "${{ vars.SPFX_CLIENT_ID }}" `
+            -Tenant "${{ vars.SPFX_TENANT_ID }}" `
+            -CertificatePath $certPath `
+            -CertificatePassword (ConvertTo-SecureString "${{ secrets.SPFX_CERTIFICATE_PASSWORD }}" -AsPlainText -Force) `
+            -ReturnConnection
+
+          Write-Host "Connected successfully to site collection: ${{ vars.SPFX_TARGET_SITE_URL }}"
+
+          Add-PnPApp -Path "drop/${{ needs.build-solution.outputs.package-name }}" -Scope Site -Overwrite
+          Publish-PnPApp -Identity "${{ needs.build-solution.outputs.package-name }}" -Scope Site
+
+          Write-Host "Deployment completed successfully!"
